@@ -23,13 +23,14 @@ export default function Signup() {
 
     setLoading(true);
 
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           username,
         },
+        emailRedirectTo: "https://redline-eight.vercel.app/login"
       },
     });
 

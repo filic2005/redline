@@ -65,7 +65,11 @@ export default function Login() {
 
     // Store in localStorage and navigate
     localStorage.setItem("user", JSON.stringify(finalUser));
-    navigate(`/profile/${finalUser.username}`);
+    if (finalUser) {
+      navigate(`/profile/${finalUser.username}`);
+    } else {
+      setError("Login succeeded, but user profile is missing.");
+    }
     setLoading(false);
   };
 
