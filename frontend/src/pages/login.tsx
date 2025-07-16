@@ -44,7 +44,7 @@ export default function Login() {
 
     // If profile doesn't exist, create one
     if (fetchError) {
-      const defaultUsername = email.split("@")[0]; // fallback username
+      const defaultUsername = user.user_metadata?.username || email.split("@")[0];
       const { error: insertError } = await supabase.from("users").insert({
         userid: user.id,
         username: defaultUsername,
@@ -62,6 +62,7 @@ export default function Login() {
 
       finalUser = { userid: user.id, username: defaultUsername };
     }
+
 
     // Store in localStorage and navigate
     localStorage.setItem("user", JSON.stringify(finalUser));
