@@ -14,28 +14,61 @@ export default function Login() {
     setLoading(true);
     setError("");
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (error) {
-      setError(error.message);
-    } else {
-      // Get full user info from your "users" table
-      const { data: userInfo, error: userFetchError } = await supabase.from("users").select("userid, username").eq("email", email).single();
-
-      if (userFetchError) {
-        setError("Login successful but failed to fetch user info.");
-      } else {
-        // Store in localStorage
-        localStorage.setItem("user", JSON.stringify(userInfo));
-        navigate("/feed");
-      }
+    if (signInError) {
+      setError(signInError.message);
+      setLoading(false);
+      return;
     }
 
+    const user = signInData.session?.user;
+
+    if (!user) {
+      setError("Login succeeded, but no user session found.");
+      setLoading(false);
+      return;
+    }
+
+    // Try to get the user profile
+    const { data: userInfo, error: fetchError } = await supabase
+      .from("users")
+      .select("userid, username")
+      .eq("userid", user.id)
+      .single();
+
+    let finalUser = userInfo;
+
+    // If profile doesn't exist, create one
+    if (fetchError) {
+      const defaultUsername = email.split("@")[0]; // fallback username
+      const { error: insertError } = await supabase.from("users").insert({
+        userid: user.id,
+        username: defaultUsername,
+        email,
+        bio: "",
+        url: "",
+      });
+
+      if (insertError) {
+        setError("Login succeeded, but profile creation failed.");
+        console.error("Insert error:", insertError);
+        setLoading(false);
+        return;
+      }
+
+      finalUser = { userid: user.id, username: defaultUsername };
+    }
+
+    // Store in localStorage and navigate
+    localStorage.setItem("user", JSON.stringify(finalUser));
+    navigate(`/profile/${finalUser.username}`);
     setLoading(false);
   };
+
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-black text-white">

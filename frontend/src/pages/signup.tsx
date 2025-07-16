@@ -39,24 +39,6 @@ export default function Signup() {
       return;
     }
 
-    const user = signUpData.user;
-
-    if (user) {
-      const { error: insertError } = await supabase.from("users").insert({
-        userid: user.id,
-        username: username,
-        email: user.email,
-        bio: "",
-        url: "",
-      });
-
-      if (insertError) {
-        setError("Signup succeeded, but profile creation failed.");
-        console.error("Insert error:", insertError);
-        setLoading(false);
-        return;
-      }
-
       alert("Check your inbox to confirm your email before logging in!");
       navigate("/");
     }
