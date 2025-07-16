@@ -39,9 +39,9 @@ export default function Signup() {
       return;
     }
 
-      alert("Check your inbox to confirm your email before logging in!");
-      navigate("/");
-    }
+    alert("Check your inbox to confirm your email before logging in!");
+    navigate("/login");
+    
 
     setLoading(false);
   };
