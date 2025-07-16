@@ -1,6 +1,7 @@
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { useEffect, useState } from "react";
 import { supabase } from "./utils/supabaseClient";
+import type { Session } from "@supabase/supabase-js";
 import AddPost from "./components/addPost";
 import Feed from './pages/feed';
 import Login from './pages/login';
@@ -16,7 +17,7 @@ function App() {
   const hideNavbar = location.pathname === "/login" || location.pathname === "/signup";
 
   const [showAddModal, setShowAddModal] = useState(false);
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Track login status
