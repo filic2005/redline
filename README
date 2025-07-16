@@ -1,0 +1,9 @@
+| Layer    | Tool                                                 |
+| -------- | ---------------------------------------------------- |
+| Frontend | React + TailwindCSS                                  |
+| Backend  | Node.js + Express                                    |
+| Database | PostgreSQL (via Supabase or manually)                |
+| Language | **TypeScript**                                       |
+| Hosting  | Vercel (frontend) + Supabase (backend & DB)          |
+
+
