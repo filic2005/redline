@@ -1,3 +1,5 @@
+# Redline – A Social App for Car Enthusiasts
+
 | Layer    | Tool                                                 |
 | -------- | ---------------------------------------------------- |
 | Frontend | React + TailwindCSS                                  |
