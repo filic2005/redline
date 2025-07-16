@@ -28,6 +28,7 @@ function App() {
       {!hideNavbar && <Navbar />}
 
       <Routes>
+        <Route path="/" element={<Navigate to="/login" />} />
         <Route path="/search" element={<Search />} />
         <Route path="/feed" element={<Feed />} />
         <Route path="/login" element={<Login />} />
