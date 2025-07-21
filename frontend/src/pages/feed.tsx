@@ -3,10 +3,8 @@ import { supabase } from "../utils/supabaseClient";
 import PostModal from "../components/postModal";
 import { MessageCircle } from "lucide-react";
 import { toggleLike, createDoubleTapHandler } from "../utils/postFunctions";
-import AnimatedCarOverlay from "../components/AnimatedCarLike";
-import { animateCarTap } from "../utils/postFunctions";
+import AnimatedCarOverlay from "../components/animatedCarLike";
 import SwipeableImageGallery from "../components/swipeableImageGallery";
-
 
 interface Post {
   postid: string;
@@ -36,45 +34,12 @@ export default function Feed() {
   const [tapPosition, setTapPosition] = useState<{ x: number; y: number } | null>(null);
   const [followeeIDs, setFolloweeIDs] = useState<string[]>([]);
   const [lastCursor, setLastCursor] = useState<{ createdat: string; postid: string } | null>(null);
+  const [feedReady, setFeedReady] = useState(false);
+
   const handleDoubleTap = useRef(createDoubleTapHandler()).current;
 
-  const twoWeeksAgo = new Date();
-  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-
-  useEffect(() => {
-    const init = async () => {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !sessionData?.session?.user) return;
-
-      const userJSON = localStorage.getItem("user");
-      if (!userJSON) return;
-      const user = JSON.parse(userJSON);
-      const currentUserID = user.userid;
-      setCurrentUserID(currentUserID);
-
-      const { data: followsData } = await supabase
-        .from("follows")
-        .select("followeeid")
-        .eq("followerid", user.userid);
-
-      const followingUserIDs = followsData?.map(f => f.followeeid) || [];
-      setFolloweeIDs(followingUserIDs);
-
-      setPosts([]);
-      setLastPostDate(null);
-      setLastCursor(null);
-      setHasMore(true);
-      fetchMorePosts(user.userid, followingUserIDs);
-    };
-
-    init();
-  }, [feedType]);
-
-  const fetchMorePosts = async (
-    uid = currentUserID,
-    following = followeeIDs
-  ) => {
-    if (loadingMore || !uid || !hasMore) return;
+  const fetchMorePosts = useCallback(async () => {
+    if (loadingMore || !currentUserID || !hasMore) return;
 
     setLoadingMore(true);
 
@@ -90,12 +55,12 @@ export default function Feed() {
       .limit(5);
 
     if (feedType === "following") {
-      if (following.length === 0) {
+      if (followeeIDs.length === 0) {
         setHasMore(false);
         setLoadingMore(false);
         return;
       }
-      query = query.in("userid", following);
+      query = query.in("userid", followeeIDs);
     }
 
     if (lastCursor) {
@@ -107,27 +72,39 @@ export default function Feed() {
     if (error || !newPosts || newPosts.length === 0) {
       setHasMore(false);
     } else {
-      const enriched = newPosts.map((post: any) => ({
-        ...post,
-        users: Array.isArray(post.users) ? post.users[0] : post.users || { username: "unknown", url: "" },
-        likeCount: 0,
-        commentCount: 0,
-      }));
+      const enriched = await Promise.all(
+        newPosts.map(async (post: any) => {
+          const [{ count: likeCount }, { count: commentCount }] = await Promise.all([
+            supabase.from("likes").select("*", { count: "exact", head: true }).eq("postid", post.postid),
+            supabase.from("comments").select("*", { count: "exact", head: true }).eq("postid", post.postid),
+          ]);
+
+          return {
+            ...post,
+            users: Array.isArray(post.users) ? post.users[0] : post.users || { username: "unknown", url: "" },
+            likeCount: likeCount || 0,
+            commentCount: commentCount || 0,
+          };
+        })
+      );
 
       const seenIDs = new Set(posts.map((p) => p.postid));
       const uniqueNewPosts = enriched.filter((p) => !seenIDs.has(p.postid));
 
       setPosts((prev) => [...prev, ...uniqueNewPosts]);
 
-      const last = enriched[enriched.length - 1];
-      setLastCursor({ createdat: last.createdat, postid: last.postid });
+      if (uniqueNewPosts.length > 0) {
+        const last = uniqueNewPosts[uniqueNewPosts.length - 1];
+        setLastCursor({ createdat: last.createdat, postid: last.postid });
+      }
     }
 
     setLoadingMore(false);
-  };
+  }, [currentUserID, followeeIDs, feedType, hasMore, loadingMore, lastCursor, posts]);
 
   useEffect(() => {
     const init = async () => {
+      setFeedReady(false);
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !sessionData?.session?.user) return;
 
@@ -149,25 +126,24 @@ export default function Feed() {
       setLastCursor(null);
       setHasMore(true);
 
-      await fetchMorePosts(user.userid, followingUserIDs);
+      setFeedReady(true);
     };
 
     init();
   }, [feedType]);
 
-
+  useEffect(() => {
+    if (feedReady) fetchMorePosts();
+  }, [feedReady, fetchMorePosts]);
 
   useEffect(() => {
     if (!observerRef.current || !hasMore) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          fetchMorePosts();
-        }
-      },
-      { threshold: 1.0 }
-    );
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        fetchMorePosts();
+      }
+    }, { threshold: 1.0 });
 
     observer.observe(observerRef.current);
 
@@ -176,11 +152,10 @@ export default function Feed() {
     };
   }, [fetchMorePosts, hasMore]);
 
-
   return (
     <div className="min-h-screen bg-black text-white px-4 py-8 pb-16">
       <div className="max-w-xl mx-auto space-y-8">
-        <div className="flex gap-4 justify-center ">
+        <div className="flex gap-4 justify-center">
           <button
             onClick={() => setFeedType("all")}
             className={`cursor-pointer text-sm px-4 py-2 rounded-full font-medium transition ${feedType === "all" ? "bg-red-600 text-white" : "bg-zinc-800 text-gray-300 hover:bg-zinc-700"}`}
@@ -201,8 +176,8 @@ export default function Feed() {
           </p>
         ) : (
           <div className="space-y-8">
-            {posts.map((post, index) => (
-              <div key={index} className="pb-8 border-b border-zinc-800 last:border-none">
+            {posts.map((post) => (
+              <div key={post.postid} className="pb-8 border-b border-zinc-800 last:border-none">
                 <div className="flex items-center gap-3 px-2 sm:px-0 cursor-pointer">
                   <img
                     src={post.users.url || "/images/default-pp.png"}
@@ -237,7 +212,7 @@ export default function Feed() {
                   }}
                 >
                   <SwipeableImageGallery images={post.images.map((img) => img.url)} />
-                  <AnimatedCarOverlay show={animating} liked={likedCar} position={tapPosition}/>
+                  <AnimatedCarOverlay show={animating} liked={likedCar} position={tapPosition} />
                 </div>
 
                 <div className="px-2 sm:px-0 pt-2 flex justify-between items-center">
@@ -270,10 +245,11 @@ export default function Feed() {
             }}
           />
         )}
+
         <div ref={observerRef} className="h-10 w-full" />
-          {loadingMore && (
-            <p className="text-center text-sm text-gray-400 mt-4">Loading more...</p>
-          )}
+        {loadingMore && (
+          <p className="text-center text-sm text-gray-400 mt-4">Loading more...</p>
+        )}
       </div>
     </div>
   );

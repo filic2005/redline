@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import { supabase } from "../utils/supabaseClient";
 import { toggleLike, createDoubleTapHandler } from "../utils/postFunctions";
 import { Heart } from "lucide-react";
 import SwipeableImageGallery from "../components/swipeableImageGallery";
-import AnimatedCarLike from "../components/AnimatedCarLike"
-import { Link } from "react-router-dom";
+import AnimatedCarLike from "../components/animatedCarLike"
 
 interface Props {
   postID: string;
@@ -16,7 +15,6 @@ interface Props {
 export default function PostModal({ postID, currentUserID, onClose }: Props) {
   const [images, setImages] = useState<string[]>([]);
   const [caption, setCaption] = useState("");
-  const [activeIndex, setActiveIndex] = useState(0);
   const [likes, setLikes] = useState(0);
   const [hasLiked, setHasLiked] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
@@ -27,8 +25,7 @@ export default function PostModal({ postID, currentUserID, onClose }: Props) {
   const [animating, setAnimating] = useState(false);
   const [likedCar, setLikedCar] = useState(true);
   const [tapPosition, setTapPosition] = useState<{ x: number; y: number } | null>(null);
-  const location = useLocation();
-
+  const navigate = useNavigate();
   const handleDoubleTap = useRef(createDoubleTapHandler()).current;
 
   useEffect(() => {
@@ -177,7 +174,7 @@ export default function PostModal({ postID, currentUserID, onClose }: Props) {
       {/* Image */}
       <div
         className="w-full sm:w-1/2 bg-black relative flex items-center justify-center sm:max-h-[90vh]"
-        onClick={(e) => {
+        onClick={(e: React.MouseEvent<HTMLDivElement>) => {
           const rect = e.currentTarget.getBoundingClientRect();
           const x = e.clientX - rect.left;
           const y = e.clientY - rect.top;
@@ -194,25 +191,7 @@ export default function PostModal({ postID, currentUserID, onClose }: Props) {
         }}
       >
         {images.length > 0 && (
-          <SwipeableImageGallery
-            images={images}
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              const x = e.clientX - rect.left;
-              const y = e.clientY - rect.top;
-
-              setTapPosition({ x, y });
-
-              handleDoubleTap(postID, async (id) => {
-                const liked = await toggleLike(id, currentUserID);
-                setLikes((prev) => prev + (liked ? 1 : -1));
-                setHasLiked(liked);
-                setLikedCar(liked);
-                setAnimating(true);
-                setTimeout(() => setAnimating(false), 700);
-              });
-            }}
-          />
+          <SwipeableImageGallery images={images} />
         )}
         <AnimatedCarLike show={animating} liked={likedCar} position={tapPosition} />
       </div>

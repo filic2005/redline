@@ -56,15 +56,3 @@ export const createDoubleTapHandler = (): ((id: string, callback: DoubleTapCallb
   };
 };
 
-export const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
-
-export const animateCarTap = async (
-  setShow: (v: boolean) => void,
-  setLiked: (v: boolean) => void,
-  liked: boolean
-) => {
-  setLiked(liked);
-  setShow(true);
-  await delay(700);
-  setShow(false);
-};

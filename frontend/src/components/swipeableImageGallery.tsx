@@ -2,10 +2,10 @@ import { useState, useRef, useEffect } from "react";
 
 interface Props {
   images: string[];
-  onDoubleTap?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
-export default function SwipeableImageGallery({ images, onDoubleTap }: Props) {
+export default function SwipeableImageGallery({ images, onClick }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const startX = useRef(0);
@@ -81,7 +81,7 @@ export default function SwipeableImageGallery({ images, onDoubleTap }: Props) {
         ref={containerRef}
         className="flex transition-transform duration-300 ease-in-out"
         style={{ transform: `translateX(-${activeIndex * 100}%)` }}
-        onDoubleClick={onDoubleTap}
+        onClick={onClick}
       >
         {images.map((url, i) => (
           <img

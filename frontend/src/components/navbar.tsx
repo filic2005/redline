@@ -1,7 +1,7 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../utils/supabaseClient";
 import { useEffect, useState } from "react";
-import SearchModal from "./SearchModal";
+import SearchModal from "./searchModal";
 import AddPost from "./addPost";
 import AddCar from "./addCar";
 import { Search, PlusCircle, CarFront, UserCircle, LogOut } from "lucide-react";

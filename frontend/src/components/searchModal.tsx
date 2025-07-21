@@ -18,7 +18,7 @@ export default function SearchModal({ onClose }: Props) {
 
   const handleSearch = async () => {
     if (type === "users") {
-      const { data: userData, error } = await supabase
+      const { data: userData } = await supabase
         .from("users")
         .select("userid, username, url")
         .eq("username", query)

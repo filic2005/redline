@@ -74,10 +74,7 @@ function App() {
       {showAddCarModal && (
         <AddCar
           onClose={() => setShowAddCarModal(false)}
-          onSave={() => {
-            setShowAddCarModal(false);
-            fetchGarage(); // re-fetch to show new car
-          }}
+          onSave={() => { setShowAddCarModal(false); }}
         />
       )}
     </div>
