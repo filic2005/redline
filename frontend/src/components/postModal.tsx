@@ -27,12 +27,13 @@ export default function PostModal({ postID, currentUserID, onClose }: Props) {
   const [tapPosition, setTapPosition] = useState<{ x: number; y: number } | null>(null);
   const navigate = useNavigate();
   const handleDoubleTap = useRef(createDoubleTapHandler()).current;
+  const location = useLocation();
 
   useEffect(() => {
     const fetchPost = async () => {
       const { data, error } = await supabase
         .from("posts")
-        .select("userid, caption, images(url), posts_userid_fkey(username, url)")
+        .select("userid, caption, images(url), users:posts_userid_fkey(username, url)")
         .eq("postid", postID)
         .single();
 
@@ -44,8 +45,8 @@ export default function PostModal({ postID, currentUserID, onClose }: Props) {
       setCaption(data.caption);
       setImages(data.images.map((img: any) => img.url));
       setPostUser(data.userid);
-      setPostUserUsername(data.posts_userid_fkey?.username || "");
-      setPostUserURL(data.posts_userid_fkey?.url || "");
+      setPostUserUsername(data.users?.username || "");
+      setPostUserURL(data.users?.url || "");
     };
 
     const fetchLikes = async () => {
