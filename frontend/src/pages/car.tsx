@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../utils/supabaseClient";
 import AddServiceUpdate from "../components/addServiceUpdate";
 import EditCarModal from "../components/editCar";
@@ -13,6 +13,7 @@ export default function Car() {
   const [showModal, setShowModal] = useState(false);
   const [showEditCarModal, setShowEditCarModal] = useState(false);
   const [currentUserID, setCurrentUserID] = useState("");
+  const navigate = useNavigate();
 
   const fetchCarData = useCallback(async () => {
     //Gather Car data in order of most recent to oldest
@@ -42,11 +43,56 @@ export default function Car() {
     fetchSession();
   }, []);
 
+  const handleDeleteCar = async (carID: string) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this car? This will also delete all service updates and mods.");
+    if (!confirmDelete) return;
+
+    const username = car?.users?.username;
+
+    // 1. Fetch car info (to get filename)
+    const { data: carData, error: fetchError } = await supabase
+      .from("cars")
+      .select("filename")
+      .eq("carid", carID)
+      .single();
+
+    if (fetchError) {
+      console.error("Failed to fetch car info", fetchError);
+      return;
+    }
+
+    // 2. Delete image from storage
+    if (carData?.filename) {
+      const { error: removeError } = await supabase.storage
+        .from("car-pfp")
+        .remove([carData.filename]);
+
+      if (removeError) {
+        console.warn("Failed to delete car image:", removeError);
+      }
+    }
+
+    // 3. Delete car from DB (cascades to mods & updates if set up)
+    const { error: deleteError } = await supabase
+      .from("cars")
+      .delete()
+      .eq("carid", carID);
+
+    if (deleteError) {
+      console.error("Failed to delete car", deleteError);
+    } else {
+      console.log("Car deleted successfully");
+      navigate(`/profile/${username}`);
+    }
+  };
+
   //Logic for Delete service update button
   const handleDeleteServiceUpdate = async (suid: string) => {
     const confirmed = window.confirm("Are you sure you want to delete this service update? This will also delete any associated mods.");
 
     if (!confirmed) return;
+
+    
 
     const { error } = await supabase
       .from("serviceupdates")
@@ -63,126 +109,129 @@ export default function Car() {
 
 
   return (
-    <div className="p-6 text-white">
-      {loading ? (
-        <p>Loading car...</p>
-      ) : !car ? (
-        <p className="text-red-400">Car not found.</p>
-      ) : (
-        <>
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-3xl font-bold">
-              @{car.users.username}'s {car.year} {car.make} {car.model}
-            </h1>
+  <div className="min-h-screen bg-black text-white px-4 py-8">
+    {loading ? (
+      <p className="text-center text-gray-400">Loading car...</p>
+    ) : !car ? (
+      <p className="text-center text-red-500 text-lg">Car not found.</p>
+    ) : (
+      <div className="max-w-3xl mx-auto space-y-10">
+
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h1 className="text-3xl font-bold">
+            @{car.users.username}'s {car.year} {car.make} {car.model}
+          </h1>
+          <div className="flex gap-3">
             {currentUserID === car?.userid && (
+              <>
+                <button
+                  onClick={() => setShowEditCarModal(true)}
+                  className="bg-red-600 hover:bg-red-700 transition text-white px-4 py-2 rounded"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDeleteCar(car.carid)}
+                  className="bg-red-600 hover:bg-red-700 transition text-white px-4 py-2 rounded"
+                >
+                  Delete
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Modifications */}
+        <div className="bg-zinc-900 p-6 rounded-xl shadow">
+          <h2 className="text-2xl font-semibold mb-4">Modifications</h2>
+          {mods.length === 0 ? (
+            <p className="text-gray-500">No mods installed.</p>
+          ) : (
+            <ul className="space-y-3">
+              {mods.map((mod, i) => (
+                <li key={i} className="bg-zinc-800 p-4 rounded">
+                  <p className="text-sm text-gray-400 mb-1">
+                    {mod.type} @ {mod.mileage} mi
+                  </p>
+                  <p className="font-semibold">{mod.name}</p>
+                  <p className="text-sm mt-1 text-gray-300">{mod.description}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Service History */}
+        <div className="bg-zinc-900 p-6 rounded-xl shadow">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold">Service History</h2>
+            {car?.userid === currentUserID && (
               <button
-                onClick={() => setShowEditCarModal(true)}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded ml-4"
+                onClick={() => setShowModal(true)}
+                className="bg-red-600 hover:bg-red-700 transition text-white px-4 py-2 rounded"
               >
-                Edit Car
+                Add Update
               </button>
             )}
           </div>
 
-          {/* Car Images Gallery 
-          
-          This will come soon, I will make it so post images can be linked to a car, 
-          and this will aggregate all the cars images that have been posted*/}
-
-          {/* Mod List */}
-          <div className="mt-8">
-            <h2 className="text-2xl font-semibold mb-4">Modifications</h2>
-            {mods.length === 0 ? (
-              <p className="text-gray-500">No mods installed.</p>
-            ) : (
-              <ul className="space-y-3">
-                {mods.map((mod, i) => (
-                  <li key={i} className="bg-zinc-800 p-4 rounded">
-                    <p className="text-sm text-gray-400 mb-1">
-                      {mod.type} @ {mod.mileage} mi
-                    </p>
-                    <p className="font-semibold">{mod.name}</p>
-                    <p className="text-sm mt-1 text-gray-300">{mod.description}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* Service Updates */}
-          <div className="mt-6">
-            <div className="flex gap-x-4">
-              <span>
-                <h2 className="text-2xl font-semibold mb-4">Service History</h2>
-              </span>
-              <span>
-                {car?.userid === currentUserID && (
+          {updates.length === 0 ? (
+            <p className="text-gray-500">No service updates yet.</p>
+          ) : (
+            <ul className="space-y-3">
+              {updates.map((update, i) => (
+                <li key={i} className="bg-zinc-800 p-4 rounded relative">
+                  <p className="text-sm text-gray-400 mb-1">
+                    {new Date(update.createdat).toLocaleDateString()}
+                  </p>
+                  <p className="mb-2">{update.description}</p>
                   <button
-                    onClick={() => setShowModal(true)}
-                    className="ml-auto bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
+                    onClick={() => handleDeleteServiceUpdate(update.suid)}
+                    className="absolute top-3 right-3 text-red-500 text-sm hover:underline"
                   >
-                    Add Update
+                    Delete
                   </button>
-                )}
-              </span>
-            </div>
-            
-            {updates.length === 0 ? (
-              <p className="text-gray-500">No service updates yet.</p>
-            ) : (
-              <ul className="space-y-3">
-                {updates.map((update, i) => (
-                  <li key={i} className="bg-zinc-800 p-4 rounded relative">
-                    <p className="text-sm text-gray-400 mb-1">
-                      {new Date(update.createdat).toLocaleDateString()}
-                    </p>
-                    <p className="mb-2">{update.description}</p>
-                    <button
-                      onClick={() => handleDeleteServiceUpdate(update.suid)}
-                      className="absolute top-3 right-3 text-red-500 text-sm hover:underline"
-                    >
-                      Delete
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </>
-      )}
-      
-      {showModal && (
-        <AddServiceUpdate
-          carID={carID}
-          onClose={() => setShowModal(false)}
-          onSave={() => fetchCarData()} // or refresh updates list
-        />
-      )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    )}
 
-      {showEditCarModal && (
-        <EditCarModal
-          carID={car.carid}
-          currentData={{
-            make: car.make,
-            model: car.model,
-            year: car.year,
-            url: car.url,
-            filename: car.filename,
-          }}
-          onClose={() => setShowEditCarModal(false)}
-          onSave={({ make, model, year, url, filename }) => {
-            setCar((prev: any) => ({
-              ...prev,
-              make,
-              model,
-              year,
-              url,
-              filename,
-            }));
-          }}
-        />
-      )}
+    {showModal && (
+      <AddServiceUpdate
+        carID={carID}
+        onClose={() => setShowModal(false)}
+        onSave={() => fetchCarData()}
+      />
+    )}
 
-    </div>
-  );
+    {showEditCarModal && (
+      <EditCarModal
+        carID={car.carid}
+        currentData={{
+          make: car.make,
+          model: car.model,
+          year: car.year,
+          url: car.url,
+          filename: car.filename,
+        }}
+        onClose={() => setShowEditCarModal(false)}
+        onSave={({ make, model, year, url, filename }) => {
+          setCar((prev: any) => ({
+            ...prev,
+            make,
+            model,
+            year,
+            url,
+            filename,
+          }));
+        }}
+      />
+    )}
+  </div>
+);
+
 }

@@ -74,17 +74,17 @@ export default function EditProfile({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4 text-black">Edit Profile</h2>
+      <div className="bg-zinc-900 rounded-xl p-6 w-full max-w-md shadow-lg border border-zinc-700">
+        <h2 className="text-xl font-bold mb-4 text-white">Edit Profile</h2>
 
-        <label className="block mb-2 text-sm text-gray-700">Bio</label>
+        <label className="block mb-2 text-sm text-gray-300">Bio</label>
         <textarea
           value={bio}
           onChange={(e) => setBio(e.target.value)}
-          className="w-full p-2 border rounded mb-4 text-black"
+          className="w-full p-2 rounded bg-zinc-800 border border-zinc-700 text-white mb-4 resize-none"
         />
 
-        <label className="block mb-2 text-sm text-gray-700">Profile Picture</label>
+        <label className="block mb-2 text-sm text-gray-300">Profile Picture</label>
         <input
           type="file"
           accept="image/*"
@@ -93,7 +93,7 @@ export default function EditProfile({
             setFile(selected);
             if (selected) setPreviewUrl(URL.createObjectURL(selected));
           }}
-          className="w-full p-2 border rounded mb-4 text-black bg-white"
+          className="w-full p-2 rounded bg-zinc-800 border border-zinc-700 text-white mb-4"
         />
 
         {previewUrl && (
@@ -104,13 +104,16 @@ export default function EditProfile({
           />
         )}
 
-        <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="text-gray-600">Cancel</button>
-          <button onClick={handleSave} className="bg-blue-600 text-white px-4 py-2 rounded">
+        <div className="flex justify-end gap-3">
+          <button onClick={onClose} className="text-gray-400 hover:text-red-500">
+            Cancel
+          </button>
+          <button onClick={handleSave} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
             Save
           </button>
         </div>
       </div>
     </div>
   );
+
 }

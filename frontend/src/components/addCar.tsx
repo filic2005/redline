@@ -73,8 +73,8 @@ export default function AddCar({ onClose, onSave }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white text-black p-6 rounded-lg w-full max-w-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+      <div className="bg-zinc-900 text-white rounded-xl p-6 w-[90%] max-w-md max-h-[90vh] overflow-y-auto shadow-lg relative">
         <h2 className="text-xl font-bold mb-4">Add New Car</h2>
 
         <input
@@ -109,7 +109,7 @@ export default function AddCar({ onClose, onSave }: Props) {
             e.preventDefault();
             if (e.dataTransfer.files?.[0]) setFile(e.dataTransfer.files[0]);
           }}
-          className="w-full p-4 border border-dashed border-gray-400 rounded bg-gray-100 text-center text-sm mb-4 cursor-pointer"
+          className="w-full mb-3 p-2 border rounded"
         >
           {file ? file.name : "Click to select or drag & drop an image"}
         </div>
@@ -124,13 +124,13 @@ export default function AddCar({ onClose, onSave }: Props) {
 
         {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
-        <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="text-gray-600">
+        <div className="flex justify-end gap-2 mt-4">
+          <button onClick={onClose} className="text-zinc-400 hover:text-white transition">
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="bg-red-600 text-white px-4 py-2 rounded"
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
           >
             Save
           </button>

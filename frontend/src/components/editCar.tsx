@@ -76,34 +76,34 @@ export default function EditCarModal({ carID, currentData, onClose, onSave }: Pr
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4 text-black">Edit Car Info</h2>
+      <div className="bg-zinc-900 rounded-xl p-6 w-full max-w-md border border-zinc-700 shadow-lg">
+        <h2 className="text-xl font-bold mb-4 text-white">Edit Car Info</h2>
 
-        <label className="block text-sm font-medium mb-1 text-gray-700">Make</label>
+        <label className="block text-sm font-medium mb-1 text-gray-300">Make</label>
         <input
           type="text"
           value={make}
           onChange={(e) => setMake(e.target.value)}
-          className="w-full p-2 border rounded mb-3 text-black"
+          className="w-full p-2 border border-zinc-600 rounded mb-3 bg-zinc-800 text-white"
         />
 
-        <label className="block text-sm font-medium mb-1 text-gray-700">Model</label>
+        <label className="block text-sm font-medium mb-1 text-gray-300">Model</label>
         <input
           type="text"
           value={model}
           onChange={(e) => setModel(e.target.value)}
-          className="w-full p-2 border rounded mb-3 text-black"
+          className="w-full p-2 border border-zinc-600 rounded mb-3 bg-zinc-800 text-white"
         />
 
-        <label className="block text-sm font-medium mb-1 text-gray-700">Year</label>
+        <label className="block text-sm font-medium mb-1 text-gray-300">Year</label>
         <input
           type="number"
           value={year}
           onChange={(e) => setYear(Number(e.target.value))}
-          className="w-full p-2 border rounded mb-4 text-black"
+          className="w-full p-2 border border-zinc-600 rounded mb-4 bg-zinc-800 text-white"
         />
 
-        <label className="block text-sm font-medium mb-1 text-gray-700">Car Picture</label>
+        <label className="block text-sm font-medium mb-1 text-gray-300">Car Picture</label>
         <input
           type="file"
           accept="image/*"
@@ -112,7 +112,7 @@ export default function EditCarModal({ carID, currentData, onClose, onSave }: Pr
             setFile(selected);
             if (selected) setPreviewUrl(URL.createObjectURL(selected));
           }}
-          className="w-full p-2 border rounded mb-4 text-black bg-white"
+          className="w-full p-2 border border-zinc-600 rounded mb-4 bg-zinc-800 text-white"
         />
 
         {previewUrl && (
@@ -124,12 +124,13 @@ export default function EditCarModal({ carID, currentData, onClose, onSave }: Pr
         )}
 
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="text-gray-600">Cancel</button>
-          <button onClick={handleSave} className="bg-red-600 text-white px-4 py-2 rounded">
+          <button onClick={onClose} className="text-gray-400 hover:text-red-500">Cancel</button>
+          <button onClick={handleSave} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
             Save
           </button>
         </div>
       </div>
     </div>
   );
+
 }

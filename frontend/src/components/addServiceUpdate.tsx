@@ -71,50 +71,50 @@ export default function AddServiceUpdate({ carID, onClose, onSave }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-xl overflow-y-auto max-h-[90vh]">
-        <h2 className="text-xl font-bold mb-4 text-black">Add Service Update</h2>
+      <div className="bg-zinc-900 rounded-xl p-6 w-full max-w-xl overflow-y-auto max-h-[90vh] border border-zinc-700 shadow-lg">
+        <h2 className="text-xl font-bold mb-4 text-white">Add Service Update</h2>
 
-        <label className="block text-sm font-medium text-gray-700">Description</label>
+        <label className="block text-sm font-medium text-gray-300">Description</label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="w-full border rounded p-2 text-black mb-4"
+          className="w-full border border-zinc-700 rounded p-2 text-white bg-zinc-800 mb-4"
         />
 
-        <h3 className="text-lg font-semibold text-black mb-2">Mods</h3>
+        <h3 className="text-lg font-semibold text-white mb-2">Mods</h3>
         {mods.map((mod, i) => (
-          <div key={i} className="border rounded p-3 mb-4 bg-gray-100">
+          <div key={i} className="border border-zinc-700 rounded p-3 mb-4 bg-zinc-800">
             <input
               value={mod.name}
               onChange={(e) => handleModChange(i, "name", e.target.value)}
               placeholder="Name"
-              className="w-full p-2 mb-2 rounded border text-black"
+              className="w-full p-2 mb-2 rounded border border-zinc-600 bg-zinc-900 text-white"
             />
             <input
               value={mod.type}
               onChange={(e) => handleModChange(i, "type", e.target.value)}
               placeholder="Type"
-              className="w-full p-2 mb-2 rounded border text-black"
+              className="w-full p-2 mb-2 rounded border border-zinc-600 bg-zinc-900 text-white"
             />
             <input
               value={mod.mileage}
               onChange={(e) => handleModChange(i, "mileage", e.target.value)}
               placeholder="Mileage"
               type="number"
-              className="w-full p-2 mb-2 rounded border text-black"
+              className="w-full p-2 mb-2 rounded border border-zinc-600 bg-zinc-900 text-white"
             />
             <textarea
               value={mod.description}
               onChange={(e) => handleModChange(i, "description", e.target.value)}
               placeholder="Description"
-              className="w-full p-2 mb-2 rounded border text-black"
+              className="w-full p-2 mb-2 rounded border border-zinc-600 bg-zinc-900 text-white"
             />
           </div>
         ))}
 
         <button
           onClick={handleAddMod}
-          className="bg-gray-300 hover:bg-gray-400 text-black px-3 py-2 rounded mb-4"
+          className="bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-2 rounded mb-4"
         >
           Add Another Mod
         </button>
@@ -122,7 +122,7 @@ export default function AddServiceUpdate({ carID, onClose, onSave }: Props) {
         {error && <p className="text-red-500 mb-4">{error}</p>}
 
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="text-gray-600">Cancel</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-red-500">Cancel</button>
           <button onClick={handleSave} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
             Save
           </button>
@@ -130,4 +130,5 @@ export default function AddServiceUpdate({ carID, onClose, onSave }: Props) {
       </div>
     </div>
   );
+
 }
