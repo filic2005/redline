@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { supabase } from "../utils/supabaseClient";
 import { toggleLike, createDoubleTapHandler } from "../utils/postFunctions";
 import { Heart } from "lucide-react";
@@ -27,7 +27,6 @@ export default function PostModal({ postID, currentUserID, onClose }: Props) {
   const [tapPosition, setTapPosition] = useState<{ x: number; y: number } | null>(null);
   const navigate = useNavigate();
   const handleDoubleTap = useRef(createDoubleTapHandler()).current;
-  const location = useLocation();
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -45,8 +44,10 @@ export default function PostModal({ postID, currentUserID, onClose }: Props) {
       setCaption(data.caption);
       setImages(data.images.map((img: any) => img.url));
       setPostUser(data.userid);
-      setPostUserUsername(data.users?.username || "");
-      setPostUserURL(data.users?.url || "");
+
+      const userObj = Array.isArray(data.users) ? data.users[0] : data.users;
+      setPostUserUsername(userObj?.username || "");
+      setPostUserURL(userObj?.url || "");
     };
 
     const fetchLikes = async () => {
