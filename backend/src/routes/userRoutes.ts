@@ -12,7 +12,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// 👇 Public: Sign up route — DO NOT require auth
+// Sign up route — DO NOT require auth
 router.post('/signup', async (req, res) => {
   const { email, password, username, bio = '' } = req.body;
 

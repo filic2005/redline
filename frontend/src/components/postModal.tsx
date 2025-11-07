@@ -46,8 +46,8 @@ export default function PostModal({ postID, currentUserID, onClose }: Props) {
       setPostUser(data.userid);
 
       const userObj = Array.isArray(data.users) ? data.users[0] : data.users;
-      setPostUserUsername(userObj?.username || "");
-      setPostUserURL(userObj?.url || "");
+        setPostUserUsername(userObj?.username || "");
+        setPostUserURL(userObj?.url || "");
     };
 
     const fetchLikes = async () => {
