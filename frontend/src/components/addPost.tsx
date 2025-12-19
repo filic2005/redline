@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { supabase } from "../utils/supabaseClient";
+import { createPost } from "../api/posts";
+import type { PostRecord } from "../api/posts";
+import { addImage } from "../api/images";
 
 interface Props {
   onClose: () => void;
@@ -31,14 +34,11 @@ export default function AddPost({ onClose, onSave }: Props) {
       return;
     }
 
-    const { data: postData, error: postError } = await supabase
-      .from("posts")
-      .insert([{ userid: userID, caption, createdat: new Date() }])
-      .select()
-      .single();
-
-    if (postError || !postData) {
-      console.error("Post creation failed", postError);
+    let postData: PostRecord;
+    try {
+      postData = await createPost({ caption });
+    } catch (err) {
+      console.error("Post creation failed", err);
       setError("Failed to create post.");
       return;
     }
@@ -68,7 +68,7 @@ export default function AddPost({ onClose, onSave }: Props) {
         continue;
       }
 
-      await supabase.from("images").insert({ postid, url: urlData.publicUrl });
+      await addImage({ postID: postid, url: urlData.publicUrl });
     }
 
     onSave(postData);

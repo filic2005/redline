@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../utils/supabaseClient";
+import { fetchFollowers, followUser, unfollowUser } from "../api/follows";
 
 interface Props {
   currentUserID: string;
@@ -16,32 +16,26 @@ export default function FollowButton({ currentUserID, profileUserID }: Props) {
   useEffect(() => {
     const checkFollowStatus = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("follows")
-        .select("followerid")
-        .eq("followerid", currentUserID)
-        .eq("followeeid", profileUserID)
-        .single();
-
-      setIsFollowing(!!data && !error);
-      setLoading(false);
+      try {
+        const followers = await fetchFollowers(profileUserID);
+        setIsFollowing(followers.some((user) => user.userid === currentUserID));
+      } catch (err) {
+        console.error('Failed to check follow status', err);
+        setIsFollowing(false);
+      } finally {
+        setLoading(false);
+      }
     };
 
     if (shouldShow) checkFollowStatus();
-  }, [currentUserID, profileUserID]);
+  }, [currentUserID, profileUserID, shouldShow]);
 
   const handleToggleFollow = async () => {
     if (isFollowing) {
-      await supabase
-        .from("follows")
-        .delete()
-        .eq("followerid", currentUserID)
-        .eq("followeeid", profileUserID);
+      await unfollowUser(profileUserID);
       setIsFollowing(false);
     } else {
-      await supabase
-        .from("follows")
-        .insert([{ followerid: currentUserID, followeeid: profileUserID }]);
+      await followUser(profileUserID);
       setIsFollowing(true);
     }
   };

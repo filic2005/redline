@@ -3,6 +3,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../utils/supabaseClient";
 import AddServiceUpdate from "../components/addServiceUpdate";
 import EditCarModal from "../components/editCar";
+import { fetchCarDetail, deleteCar as apiDeleteCar } from "../api/cars";
+import { fetchModsByCar } from "../api/mods";
+import { fetchServiceUpdates, deleteServiceUpdate as apiDeleteServiceUpdate } from "../api/serviceUpdates";
 
 export default function Car() {
   const { carID } = useParams();
@@ -16,18 +19,22 @@ export default function Car() {
   const navigate = useNavigate();
 
   const fetchCarData = useCallback(async () => {
-    //Gather Car data in order of most recent to oldest
-    const [{ data: carData }, { data: modData }, { data: updateData }] =
-      await Promise.all([
-        supabase.from("cars").select("*, users:userid(username)").eq("carid", carID).single(),
-        supabase.from("mods").select("*").eq("carid", carID).order("mileage", { ascending: false }),
-        supabase.from("serviceupdates").select("*").eq("carid", carID).order("createdat", { ascending: false }),
+    if (!carID) return;
+    try {
+      const [carData, modData, updateData] = await Promise.all([
+        fetchCarDetail(carID),
+        fetchModsByCar(carID),
+        fetchServiceUpdates(carID),
       ]);
 
-    setCar(carData);
-    setMods(modData || []);
-    setUpdates(updateData || []);
-    setLoading(false);
+      setCar(carData);
+      setMods(modData || []);
+      setUpdates(updateData || []);
+    } catch (err) {
+      console.error("Failed to load car", err);
+    } finally {
+      setLoading(false);
+    }
   }, [carID]);
 
   useEffect(() => {
@@ -48,41 +55,21 @@ export default function Car() {
     if (!confirmDelete) return;
 
     const username = car?.users?.username;
-
-    // 1. Fetch car info (to get filename)
-    const { data: carData, error: fetchError } = await supabase
-      .from("cars")
-      .select("filename")
-      .eq("carid", carID)
-      .single();
-
-    if (fetchError) {
-      console.error("Failed to fetch car info", fetchError);
-      return;
-    }
-
-    // 2. Delete image from storage
-    if (carData?.filename) {
+    if (car?.filename) {
       const { error: removeError } = await supabase.storage
         .from("car-pfp")
-        .remove([carData.filename]);
+        .remove([car.filename]);
 
       if (removeError) {
         console.warn("Failed to delete car image:", removeError);
       }
     }
 
-    // 3. Delete car from DB (cascades to mods & updates if set up)
-    const { error: deleteError } = await supabase
-      .from("cars")
-      .delete()
-      .eq("carid", carID);
-
-    if (deleteError) {
-      console.error("Failed to delete car", deleteError);
-    } else {
-      console.log("Car deleted successfully");
+    try {
+      await apiDeleteCar(carID);
       navigate(`/profile/${username}`);
+    } catch (err) {
+      console.error("Failed to delete car", err);
     }
   };
 
@@ -94,16 +81,11 @@ export default function Car() {
 
     
 
-    const { error } = await supabase
-      .from("serviceupdates")
-      .delete()
-      .eq("suid", suid);
-
-    if (error) {
-      console.error("Failed to delete service update", error);
-    } else {
-      // re-fetch updates if needed
+    try {
+      await apiDeleteServiceUpdate(suid);
       fetchCarData();
+    } catch (err) {
+      console.error("Failed to delete service update", err);
     }
   };
 

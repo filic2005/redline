@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom"
-import { supabase } from "../utils/supabaseClient";
 import { toggleLike, createDoubleTapHandler } from "../utils/postFunctions";
 import { Heart } from "lucide-react";
 import SwipeableImageGallery from "../components/swipeableImageGallery";
 import AnimatedCarLike from "../components/animatedCarLike"
+import { fetchPost, deletePost as apiDeletePost } from "../api/posts";
+import { fetchComments as apiFetchComments, addComment as apiAddComment, deleteComment as apiDeleteComment } from "../api/comments";
+import { fetchImagesByPost } from "../api/images";
+import { supabase } from "../utils/supabaseClient";
 
 interface Props {
   postID: string;
@@ -29,64 +32,37 @@ export default function PostModal({ postID, currentUserID, onClose }: Props) {
   const handleDoubleTap = useRef(createDoubleTapHandler()).current;
 
   useEffect(() => {
-    const fetchPost = async () => {
-      const { data, error } = await supabase
-        .from("posts")
-        .select("userid, caption, images(url), users:posts_userid_fkey(username, url)")
-        .eq("postid", postID)
-        .single();
-
-      if (error || !data) {
-        console.error("Failed to fetch post", error);
-        return;
+    const loadPost = async () => {
+      try {
+        const post = await fetchPost(postID);
+        const userObj = Array.isArray(post.users) ? post.users[0] : (post.users as any);
+        setCaption(post.caption);
+        setImages((post.images ?? []).map((img: any) => img.url));
+        setPostUser(post.userid);
+        setPostUserUsername(userObj?.username || "");
+        setPostUserURL(userObj?.url || "");
+        setLikes(post.likeCount || 0);
+        setHasLiked(!!post.hasLiked);
+      } catch (err) {
+        console.error("Failed to fetch post", err);
       }
-
-      setCaption(data.caption);
-      setImages(data.images.map((img: any) => img.url));
-      setPostUser(data.userid);
-
-      const userObj = Array.isArray(data.users) ? data.users[0] : data.users;
-      setPostUserUsername(userObj?.username || "");
-      setPostUserURL(userObj?.url || "");
     };
 
-    const fetchLikes = async () => {
-      const { data: likeData, error } = await supabase
-        .from("likes")
-        .select("userid")
-        .eq("postid", postID);
-
-      if (error) {
-        console.error("Failed to fetch likes", error);
-        return;
+    const loadComments = async () => {
+      try {
+        const data = await apiFetchComments(postID);
+        setComments(data || []);
+      } catch (err) {
+        console.error("Failed to fetch comments", err);
       }
-
-      setLikes(likeData.length);
-      setHasLiked(likeData.some((like) => like.userid === currentUserID));
     };
 
-    const fetchComments = async () => {
-      const { data, error } = await supabase
-        .from("comments")
-        .select("commentid, text, createdat, userid, users(username, url)")
-        .eq("postid", postID)
-        .order("createdat", { ascending: false });
-
-      if (error) {
-        console.error("Failed to fetch comments", error);
-        return;
-      }
-
-      setComments(data || []);
-    };
-
-    fetchPost();
-    fetchLikes();
-    fetchComments();
-  }, [postID, currentUserID]);
+    loadPost();
+    loadComments();
+  }, [postID]);
 
   const handleLike = async () => {
-    const liked = await toggleLike(postID, currentUserID);
+    const liked = await toggleLike(postID, hasLiked);
     setLikes((prev) => prev + (liked ? 1 : -1));
     setHasLiked(liked);
   };
@@ -94,36 +70,22 @@ export default function PostModal({ postID, currentUserID, onClose }: Props) {
   const submitComment = async () => {
     if (!newComment.trim()) return;
 
-    const { error } = await supabase
-      .from("comments")
-      .insert([{ postid: postID, userid: currentUserID, text: newComment }]);
-
-    if (!error) {
-      const { data: userData } = await supabase
-        .from("users")
-        .select("username")
-        .eq("userid", currentUserID)
-        .single();
-
-      setComments((prev) => [
-        { text: newComment, createdat: new Date(), users: userData },
-        ...prev,
-      ]);
-
+    try {
+      await apiAddComment(postID, newComment);
+      const updated = await apiFetchComments(postID);
+      setComments(updated || []);
       setNewComment("");
+    } catch (err) {
+      console.error("Failed to add comment", err);
     }
   };
 
   const handleDeleteComment = async (commentID: string) => {
-    const { error } = await supabase
-      .from("comments")
-      .delete()
-      .eq("commentid", commentID);
-
-    if (!error) {
+    try {
+      await apiDeleteComment(commentID);
       setComments((prev) => prev.filter((c) => c.commentid !== commentID));
-    } else {
-      console.error("Failed to delete comment", error);
+    } catch (err) {
+      console.error("Failed to delete comment", err);
     }
   };
 
@@ -132,14 +94,12 @@ export default function PostModal({ postID, currentUserID, onClose }: Props) {
 
     if (!confirmDelete) return;
 
-    const { data: imageData, error: fetchError } = await supabase
-      .from("images")
-      .select("url")
-      .eq("postid", postID);
-
-    if (fetchError) {
-      console.error("Failed to fetch post images", fetchError);
-      return;
+    let imageData: { url: string }[] = [];
+    try {
+      const images = await fetchImagesByPost(postID);
+      imageData = images || [];
+    } catch (err) {
+      console.error("Failed to fetch post images", err);
     }
 
     const imagePaths = (imageData || []).map((img) => {
@@ -158,16 +118,12 @@ export default function PostModal({ postID, currentUserID, onClose }: Props) {
       }
     }
 
-    const { error: deleteError } = await supabase
-      .from("posts")
-      .delete()
-      .eq("postid", postID);
-
-    if (deleteError) {
-      console.error("Failed to delete post", deleteError);
-    } else {
+    try {
+      await apiDeletePost(postID);
       onClose();
       window.location.reload();
+    } catch (err) {
+      console.error("Failed to delete post", err);
     }
   };
   return (
@@ -183,7 +139,7 @@ export default function PostModal({ postID, currentUserID, onClose }: Props) {
           setTapPosition({ x, y });
 
           handleDoubleTap(postID, async (id) => {
-            const liked = await toggleLike(id, currentUserID);
+            const liked = await toggleLike(id, hasLiked);
             setLikes((prev) => prev + (liked ? 1 : -1));
             setHasLiked(liked);
             setLikedCar(liked);

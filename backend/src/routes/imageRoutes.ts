@@ -1,12 +1,14 @@
 import express from 'express';
-import { ImageService } from '../modelServices/imageServices.js';
-import { AuthedRequest } from '../middleware/authMiddleware.js';
+import { ImageRepo } from '../repos/imageRepo.ts';
+import { AuthedRequest } from '../middleware/authMiddleware.ts';
+import { CarRepo } from '../repos/carRepo.ts';
+import { PostRepo } from '../repos/postRepo.ts';
 
 const router = express.Router();
 
 // Add image to a car or post
 router.post('/', async (req: AuthedRequest, res) => {
-  const { carID, postID, url } = req.body;
+  const { carID = null, postID = null, url } = req.body;
   const userID = req.userID;
 
   if (!userID) {
@@ -15,7 +17,28 @@ router.post('/', async (req: AuthedRequest, res) => {
   }
 
   try {
-    const newImage = await ImageService.addImage(carID, postID, url);
+    if (!url) {
+      res.status(400).json({ error: 'Image URL is required' });
+      return;
+    }
+
+    if (carID) {
+      const car = await CarRepo.getCarById(carID);
+      if (!car || car.userid !== userID) {
+        res.status(403).json({ error: 'Not authorized to add images to this car' });
+        return;
+      }
+    }
+
+    if (postID) {
+      const post = await PostRepo.getPostWithMeta(postID);
+      if (!post || post.userid !== userID) {
+        res.status(403).json({ error: 'Not authorized to add images to this post' });
+        return;
+      }
+    }
+
+    const newImage = await ImageRepo.addImage(carID, postID, url);
     res.status(201).json(newImage);
     return;
   } catch (err) {
@@ -29,7 +52,7 @@ router.get('/post/:postID', async (req, res) => {
   const { postID } = req.params;
 
   try {
-    const images = await ImageService.getImagesByPost(postID);
+    const images = await ImageRepo.getImagesByPost(postID);
     res.status(200).json(images);
     return;
   } catch (err) {
@@ -49,7 +72,7 @@ router.delete('/:imageID', async (req: AuthedRequest, res) => {
   }
 
   try {
-    const deleted = await ImageService.deleteImage(imageID, userID);
+    const deleted = await ImageRepo.deleteImage(imageID, userID);
     if (!deleted) {
       res.status(403).json({ error: 'Not authorized or image not found' });
       return;

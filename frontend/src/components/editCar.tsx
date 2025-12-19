@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../utils/supabaseClient";
+import { updateCar } from "../api/cars";
 
 interface Props {
   carID: string;
@@ -56,21 +57,18 @@ export default function EditCarModal({ carID, currentData, onClose, onSave }: Pr
       uploadedFilename = filename;
     }
 
-    // Step 3: Update car row
-    const { error } = await supabase
-      .from("cars")
-      .update({
+    try {
+      await updateCar(carID, {
         make,
         model,
         year,
         url: uploadedUrl,
         filename: uploadedFilename,
-      })
-      .eq("carid", carID);
-
-    if (!error) {
+      });
       onSave({ make, model, year, url: uploadedUrl, filename: uploadedFilename });
       onClose();
+    } catch (err) {
+      console.error("Failed to update car", err);
     }
   };
 

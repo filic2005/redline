@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../utils/supabaseClient";
+import { updateProfile } from "../api/users";
 
 interface Props {
   currentBio: string;
@@ -60,15 +61,12 @@ export default function EditProfile({
       uploadedFilename = filename;
     }
 
-    // Step 4: Update user row
-    const { error } = await supabase
-      .from("users")
-      .update({ bio, url: uploadedUrl, filename: uploadedFilename })
-      .eq("userid", userID);
-
-    if (!error) {
+    try {
+      await updateProfile({ bio, url: uploadedUrl, filename: uploadedFilename });
       onSave({ bio, url: uploadedUrl, filename: uploadedFilename });
       onClose();
+    } catch (err) {
+      console.error("Failed to update profile", err);
     }
   };
 

@@ -1,6 +1,6 @@
 import express from 'express';
-import { LikeService } from '../modelServices/likeServices.js';
-import { AuthedRequest } from '../middleware/authMiddleware.js';
+import { LikeRepo } from '../repos/likeRepo.ts';
+import { AuthedRequest } from '../middleware/authMiddleware.ts';
 
 const router = express.Router();
 
@@ -15,7 +15,7 @@ router.post('/:postID', async (req: AuthedRequest, res) => {
   }
 
   try {
-    const liked = await LikeService.likePost(userID, postID);
+    const liked = await LikeRepo.likePost(userID, postID);
     res.status(200).json({ liked });
     return;
   } catch (err) {
@@ -35,7 +35,7 @@ router.delete('/:postID', async (req: AuthedRequest, res) => {
   }
 
   try {
-    const unliked = await LikeService.unlikePost(userID, postID);
+    const unliked = await LikeRepo.unlikePost(userID, postID);
     res.status(200).json({ unliked });
     return;
   } catch (err) {
@@ -49,12 +49,26 @@ router.get('/count/:postID', async (req, res) => {
   const { postID } = req.params;
 
   try {
-    const count = await LikeService.countLikes(postID);
+    const count = await LikeRepo.countLikes(postID);
     res.status(200).json({ count });
     return;
   } catch (err) {
     res.status(500).json({ error: 'Failed to count likes' });
     return;
+  }
+});
+
+router.get('/status/:postID', async (req: AuthedRequest, res) => {
+  if (!req.userID) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  try {
+    const hasLiked = await LikeRepo.hasLiked(req.params.postID, req.userID);
+    res.status(200).json({ hasLiked });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch like status' });
   }
 });
 

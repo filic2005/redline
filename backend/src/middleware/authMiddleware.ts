@@ -11,6 +11,11 @@ export interface AuthedRequest extends Request {
 }
 
 export function authenticate(req: AuthedRequest, res: Response, next: NextFunction): void {
+
+  if (req.method === 'OPTIONS') {
+    next();
+    return;
+  }
   
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {

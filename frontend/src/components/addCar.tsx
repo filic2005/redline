@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../utils/supabaseClient";
+import { createCar } from "../api/cars";
 
 interface Props {
   onClose: () => void;
@@ -54,22 +55,22 @@ export default function AddCar({ onClose, onSave }: Props) {
       imageFilename = filename;
     }
 
-    const { error: insertError } = await supabase.from("cars").insert({
-      make,
-      model,
-      year: parseInt(year),
-      url: imageUrl,
-      filename: imageFilename,
-      userid: userID,
-    });
-
-    if (insertError) {
-      console.error("Car insert error:", insertError);
+    try {
+      await createCar({
+        make,
+        model,
+        year: parseInt(year, 10),
+        url: imageUrl,
+        filename: imageFilename,
+      });
+    } catch (err) {
+      console.error("Car insert error:", err);
       setError("Failed to add car.");
-    } else {
-      onSave();
-      onClose();
+      return;
     }
+
+    onSave();
+    onClose();
   };
 
   return (

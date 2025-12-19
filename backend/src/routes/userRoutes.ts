@@ -1,18 +1,11 @@
 import express from 'express';
-import { UserServices } from '../modelServices/userServices.js';
-import { AuthedRequest } from '../middleware/authMiddleware.js';
-import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-dotenv.config();
+import { UserRepo } from '../repos/userRepo.ts';
+import { AuthedRequest, authenticate } from '../middleware/authMiddleware.ts';
+import { supabase } from '../utils/supabaseClient.ts';
 
 const router = express.Router();
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-// 👇 Public: Sign up route — DO NOT require auth
+// Sign up route — DO NOT require auth
 router.post('/signup', async (req, res) => {
   const { email, password, username, bio = '' } = req.body;
 
@@ -30,7 +23,7 @@ router.post('/signup', async (req, res) => {
     }
 
     const userID = data.user.id;
-    const newUser = await UserServices.createUserWithID(userID, username, email, bio);
+    const newUser = await UserRepo.createUserWithID(userID, username, email, bio);
     res.status(201).json({ message: 'User created', user: newUser });
     return;
   } catch (err) {
@@ -43,7 +36,7 @@ router.post('/signup', async (req, res) => {
 router.get('/id/:userID', async (req, res) => {
   const { userID } = req.params;
   try {
-    const user = await UserServices.getUserById(userID);
+    const user = await UserRepo.getUserById(userID);
     if (!user) {
       res.status(404).json({ error: 'User not found' });
       return;
@@ -59,7 +52,7 @@ router.get('/id/:userID', async (req, res) => {
 router.get('/username/:username', async (req, res) => {
   const { username } = req.params;
   try {
-    const user = await UserServices.getUserByUsername(username);
+    const user = await UserRepo.getUserByUsername(username);
     if (!user) {
       res.status(404).json({ error: 'User not found' });
       return;
@@ -73,23 +66,49 @@ router.get('/username/:username', async (req, res) => {
 });
 
 // 🔒 Middleware: Require auth for routes below
-router.use((req: AuthedRequest, res, next) => {
-  if (!req.userID) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
-  }
-  next();
-});
+router.use(authenticate);
 
 // 🔒 Auth-protected routes
+router.post('/ensure', async (req: AuthedRequest, res) => {
+  try {
+    const existing = await UserRepo.getUserById(req.userID!);
+    if (existing) {
+      res.status(200).json(existing);
+      return;
+    }
+
+    const { username, email, bio = '' } = req.body;
+    if (!username || !email) {
+      res.status(400).json({ error: 'Username and email are required to create a profile' });
+      return;
+    }
+
+    const created = await UserRepo.createUserWithID(req.userID!, username, email, bio);
+    res.status(201).json(created);
+  } catch (err: any) {
+    const message = err?.message || 'Failed to ensure user profile';
+    const isConflict = typeof message === 'string' && message.toLowerCase().includes('duplicate key');
+    res.status(isConflict ? 400 : 500).json({ error: isConflict ? 'Username already taken' : message });
+  }
+});
+
 router.patch('/bio', async (req: AuthedRequest, res) => {
-  const updated = await UserServices.updateBio(req.userID!, req.body.newBio);
+  const updated = await UserRepo.updateBio(req.userID!, req.body.newBio);
   res.status(200).json(updated);
+});
+
+router.patch('/profile', async (req: AuthedRequest, res) => {
+  try {
+    const updated = await UserRepo.updateProfile(req.userID!, req.body);
+    res.status(200).json(updated);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
 });
 
 router.patch('/username', async (req: AuthedRequest, res) => {
   try {
-    const updated = await UserServices.changeUsername(req.userID!, req.body.newUsername);
+    const updated = await UserRepo.changeUsername(req.userID!, req.body.newUsername);
     res.status(200).json(updated);
   } catch (err: any) {
     res.status(400).json({ error: err.message || 'Failed to change username' });
@@ -97,7 +116,7 @@ router.patch('/username', async (req: AuthedRequest, res) => {
 });
 
 router.delete('/', async (req: AuthedRequest, res) => {
-  await UserServices.deleteUser(req.userID!);
+  await UserRepo.deleteUser(req.userID!);
   res.status(204).send();
 });
 

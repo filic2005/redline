@@ -3,6 +3,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.50.3",
     "axios": "^1.10.0",
+    "cors": "^2.8.5",
     "dotenv": "^17.0.1",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
@@ -11,6 +12,7 @@
   },
   "devDependencies": {
     "@types/axios": "^0.9.36",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.0.10",
@@ -20,6 +22,7 @@
     "typescript": "^5.8.3"
   },
   "scripts": {
+    "dev": "node --loader ts-node/esm src/server.ts",
     "db:create": "psql -h aws-0-us-east-1.pooler.supabase.com -p 6543 -U postgres.jlfrfodecmyuhurplzek -d postgres -f backend/database/schema.sql"
   }
 }

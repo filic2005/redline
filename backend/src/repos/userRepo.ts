@@ -1,6 +1,6 @@
 import { db } from '../../database/database.ts';
 
-export class UserServices {
+export class UserRepo {
   // Create a new user
   static async createUser(username: string, email: string, bio: string = '') {
     const result = await db.query(
@@ -46,6 +46,38 @@ export class UserServices {
       `UPDATE users SET bio = $1 WHERE userID = $2 RETURNING *`,
       [newBio, userID]
     );
+    return result.rows[0];
+  }
+
+  static async updateProfile(userID: string, payload: { bio?: string; url?: string | null; filename?: string | null }) {
+    const fields: string[] = [];
+    const values: (string | null)[] = [];
+
+    if (payload.bio !== undefined) {
+      fields.push('bio');
+      values.push(payload.bio);
+    }
+
+    if (payload.url !== undefined) {
+      fields.push('url');
+      values.push(payload.url);
+    }
+
+    if (payload.filename !== undefined) {
+      fields.push('filename');
+      values.push(payload.filename);
+    }
+
+    if (!fields.length) {
+      return await this.getUserById(userID);
+    }
+
+    const setClause = fields.map((field, idx) => `${field} = $${idx + 1}`).join(', ');
+    const result = await db.query(
+      `UPDATE users SET ${setClause} WHERE userID = $${fields.length + 1} RETURNING *`,
+      [...values, userID]
+    );
+
     return result.rows[0];
   }
 
