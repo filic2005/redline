@@ -1,6 +1,6 @@
 import express from 'express';
-import { FollowService } from '../modelServices/followServices.js';
-import { AuthedRequest } from '../middleware/authMiddleware.js';
+import { FollowRepo } from '../repos/followRepo.ts';
+import { AuthedRequest } from '../middleware/authMiddleware.ts';
 
 const router = express.Router();
 
@@ -15,7 +15,7 @@ router.post('/:followeeID', async (req: AuthedRequest, res) => {
   }
 
   try {
-    const followed = await FollowService.followUser(followerID, followeeID);
+    const followed = await FollowRepo.followUser(followerID, followeeID);
     res.status(200).json({ followed });
     return;
   } catch (err) {
@@ -35,7 +35,7 @@ router.delete('/:followeeID', async (req: AuthedRequest, res) => {
   }
 
   try {
-    const unfollowed = await FollowService.unfollowUser(followerID, followeeID);
+    const unfollowed = await FollowRepo.unfollowUser(followerID, followeeID);
     res.status(200).json({ unfollowed });
     return;
   } catch (err) {
@@ -49,7 +49,7 @@ router.get('/followers/:userID', async (req, res) => {
   const { userID } = req.params;
 
   try {
-    const followers = await FollowService.getFollowers(userID);
+    const followers = await FollowRepo.getFollowers(userID);
     res.status(200).json(followers);
     return;
   } catch (err) {
@@ -63,7 +63,7 @@ router.get('/following/:userID', async (req, res) => {
   const { userID } = req.params;
 
   try {
-    const following = await FollowService.getFollowing(userID);
+    const following = await FollowRepo.getFollowing(userID);
     res.status(200).json(following);
     return;
   } catch (err) {

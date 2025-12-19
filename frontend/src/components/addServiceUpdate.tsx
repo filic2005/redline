@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "../utils/supabaseClient";
+import { createServiceUpdate } from "../api/serviceUpdates";
 
 interface Props {
   carID: string | undefined;
@@ -32,41 +32,34 @@ export default function AddServiceUpdate({ carID, onClose, onSave }: Props) {
         return;
     }
 
-    // Insert the service update
-    const { data: serviceData, error: serviceError } = await supabase
-        .from("serviceupdates")
-        .insert([{ carid: carID, description }])
-        .select()
-        .single();
-
-    if (serviceError || !serviceData) {
-        setError("Failed to add service update.");
-        return;
+    if (!carID) {
+      setError("Missing car reference.");
+      return;
     }
 
-    const suid = serviceData.suid;
+    try {
+      const payload = mods
+        .filter((mod) => mod.name.trim())
+        .map((mod) => ({
+          name: mod.name,
+          type: mod.type,
+          description: mod.description,
+          mileage: parseInt(mod.mileage || "0", 10),
+        }));
 
-    const modInserts = mods.filter(mod => mod.name.trim()).map(mod => ({
-        ...mod,
-        suid,
-        carid: carID,
-        mileage: parseInt(mod.mileage || "0"),
-    }));
-
-    if (modInserts.length > 0) {
-        const { error: modError } = await supabase.from("mods").insert(modInserts);
-
-        if (modError) {
-        // Roll back the service update
-        await supabase.from("serviceupdates").delete().eq("suid", suid);
-        setError("Failed to save mods. Service update was rolled back.");
-        return;
-        }
+      await createServiceUpdate({
+        carID,
+        description,
+        mods: payload,
+      });
+    } catch (err) {
+      setError("Failed to add service update.");
+      return;
     }
 
     onSave();
     onClose();
-    };
+  };
 
 
   return (

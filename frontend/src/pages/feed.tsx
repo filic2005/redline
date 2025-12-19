@@ -1,24 +1,19 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { supabase } from "../utils/supabaseClient";
 import PostModal from "../components/postModal";
 import { MessageCircle } from "lucide-react";
 import { toggleLike, createDoubleTapHandler } from "../utils/postFunctions";
 import AnimatedCarOverlay from "../components/animatedCarLike";
 import SwipeableImageGallery from "../components/swipeableImageGallery";
+import { fetchFeed } from "../api/posts";
+import type { FeedPost } from "../api/posts";
+import { supabase } from "../utils/supabaseClient";
 
-interface Post {
-  postid: string;
-  caption: string;
-  userid: string;
-  createdat: string;
-  images: { url: string }[];
-  users: {
+type Post = FeedPost & {
+  user: {
     username: string;
-    url: string;
+    url: string | null;
   };
-  likeCount: number;
-  commentCount: number;
-}
+};
 
 export default function Feed() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -32,7 +27,6 @@ export default function Feed() {
   const [animating, setAnimating] = useState(false);
   const [likedCar, setLikedCar] = useState(true);
   const [tapPosition, setTapPosition] = useState<{ x: number; y: number } | null>(null);
-  const [followeeIDs, setFolloweeIDs] = useState<string[]>([]);
   const [lastCursor, setLastCursor] = useState<{ createdat: string; postid: string } | null>(null);
   const [feedReady, setFeedReady] = useState(false);
 
@@ -43,64 +37,31 @@ export default function Feed() {
 
     setLoadingMore(true);
 
-    const twoWeeksAgo = new Date();
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    try {
+      const data = await fetchFeed({
+        type: feedType,
+        cursorCreatedAt: lastCursor?.createdat,
+        cursorPostId: lastCursor?.postid,
+        limit: 5,
+      });
 
-    let query = supabase
-      .from("posts")
-      .select("postid, caption, userid, createdat, images(url), users!posts_userid_fkey(username, url)")
-      .order("createdat", { ascending: false })
-      .order("postid", { ascending: false })
-      .gte("createdat", twoWeeksAgo.toISOString())
-      .limit(5);
-
-    if (feedType === "following") {
-      if (followeeIDs.length === 0) {
+      if (!data.length) {
         setHasMore(false);
-        setLoadingMore(false);
-        return;
-      }
-      query = query.in("userid", followeeIDs);
-    }
+      } else {
+        const seenIDs = new Set(posts.map((p) => p.postid));
+        const uniqueNewPosts = data.filter((post) => !seenIDs.has(post.postid));
+        setPosts((prev) => [...prev, ...uniqueNewPosts]);
 
-    if (lastCursor) {
-      query = query.or(`createdat.lt.${lastCursor.createdat},and(createdat.eq.${lastCursor.createdat},postid.lt.${lastCursor.postid})`);
-    }
-
-    const { data: newPosts, error } = await query;
-
-    if (error || !newPosts || newPosts.length === 0) {
-      setHasMore(false);
-    } else {
-      const enriched = await Promise.all(
-        newPosts.map(async (post: any) => {
-          const [{ count: likeCount }, { count: commentCount }] = await Promise.all([
-            supabase.from("likes").select("*", { count: "exact", head: true }).eq("postid", post.postid),
-            supabase.from("comments").select("*", { count: "exact", head: true }).eq("postid", post.postid),
-          ]);
-
-          return {
-            ...post,
-            users: Array.isArray(post.users) ? post.users[0] : post.users || { username: "unknown", url: "" },
-            likeCount: likeCount || 0,
-            commentCount: commentCount || 0,
-          };
-        })
-      );
-
-      const seenIDs = new Set(posts.map((p) => p.postid));
-      const uniqueNewPosts = enriched.filter((p) => !seenIDs.has(p.postid));
-
-      setPosts((prev) => [...prev, ...uniqueNewPosts]);
-
-      if (uniqueNewPosts.length > 0) {
-        const last = uniqueNewPosts[uniqueNewPosts.length - 1];
+        const last = data[data.length - 1];
         setLastCursor({ createdat: last.createdat, postid: last.postid });
       }
+    } catch (err) {
+      console.error('Failed to fetch feed', err);
+      setHasMore(false);
     }
 
     setLoadingMore(false);
-  }, [currentUserID, followeeIDs, feedType, hasMore, loadingMore, lastCursor, posts]);
+  }, [currentUserID, feedType, hasMore, loadingMore, lastCursor, posts]);
 
   useEffect(() => {
     const init = async () => {
@@ -111,16 +72,7 @@ export default function Feed() {
       const userJSON = localStorage.getItem("user");
       if (!userJSON) return;
       const user = JSON.parse(userJSON);
-      const currentUserID = user.userid;
-      setCurrentUserID(currentUserID);
-
-      const { data: followsData } = await supabase
-        .from("follows")
-        .select("followeeid")
-        .eq("followerid", user.userid);
-
-      const followingUserIDs = followsData?.map(f => f.followeeid) || [];
-      setFolloweeIDs(followingUserIDs);
+      setCurrentUserID(user.userid);
 
       setPosts([]);
       setLastCursor(null);
@@ -180,12 +132,12 @@ export default function Feed() {
               <div key={post.postid} className="pb-8 border-b border-zinc-800 last:border-none">
                 <div className="flex items-center gap-3 px-2 sm:px-0 cursor-pointer">
                   <img
-                    src={post.users.url || "/images/default-pp.png"}
+                    src={post.user?.url || "/images/default-pp.png"}
                     alt="Profile"
                     className="w-10 h-10 rounded-full object-cover border border-zinc-700"
                   />
-                  <p onClick={() => window.location.href = `/profile/${post.users.username}`} className="text-sm font-semibold text-white cursor-pointer">
-                    @{post.users.username}
+                  <p onClick={() => window.location.href = `/profile/${post.user?.username}`} className="text-sm font-semibold text-white cursor-pointer">
+                    @{post.user?.username}
                   </p>
                 </div>
 
@@ -199,11 +151,13 @@ export default function Feed() {
                     setTapPosition({ x, y });
 
                     handleDoubleTap(post.postid, async (id) => {
-                      const liked = await toggleLike(id, currentUserID);
+                      const liked = await toggleLike(id, !!post.hasLiked);
                       setPosts((prev) =>
-                        prev.map((p) =>
-                          p.postid === id ? { ...p, likeCount: p.likeCount + (liked ? 1 : -1) } : p
-                        )
+                        prev.map((p) => {
+                          if (p.postid !== id) return p;
+                          const delta = (liked ? 1 : 0) - (p.hasLiked ? 1 : 0);
+                          return { ...p, hasLiked: liked, likeCount: p.likeCount + delta };
+                        })
                       );
                       setLikedCar(liked);
                       setAnimating(true);

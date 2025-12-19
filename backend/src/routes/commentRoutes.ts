@@ -1,6 +1,6 @@
 import express from 'express';
-import { CommentService } from '../modelServices/commentServices.js';
-import { AuthedRequest } from '../middleware/authMiddleware.js';
+import { CommentRepo } from '../repos/commentRepo.ts';
+import { AuthedRequest } from '../middleware/authMiddleware.ts';
 
 const router = express.Router();
 
@@ -16,7 +16,7 @@ router.post('/:postID', async (req: AuthedRequest, res) => {
   }
 
   try {
-    const comment = await CommentService.addComment(postID, userID, text);
+    const comment = await CommentRepo.addComment(postID, userID, text);
     res.status(201).json(comment);
     return;
   } catch (err) {
@@ -30,7 +30,7 @@ router.get('/:postID', async (req, res) => {
   const { postID } = req.params;
 
   try {
-    const comments = await CommentService.getCommentsByPost(postID);
+    const comments = await CommentRepo.getCommentsByPost(postID);
     res.status(200).json(comments);
     return;
   } catch (err) {
@@ -50,7 +50,7 @@ router.delete('/:commentID', async (req: AuthedRequest, res) => {
   }
 
   try {
-    const deleted = await CommentService.deleteComment(commentID, userID);
+    const deleted = await CommentRepo.deleteComment(commentID, userID);
     if (!deleted) {
       res.status(403).json({ error: 'Not authorized to delete this comment' });
       return;

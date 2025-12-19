@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { supabase } from "../utils/supabaseClient";
+import { fetchUserByUsername } from "../api/users";
+import { searchCars } from "../api/cars";
 import { Search } from "lucide-react";
 
 interface Props {
@@ -15,28 +16,42 @@ export default function SearchModal({ onClose }: Props) {
   const [make, setMake] = useState("");
   const [model, setModel] = useState("");
   const [year, setYear] = useState("");
+  const [error, setError] = useState("");
 
   const handleSearch = async () => {
+    setError("");
     if (type === "users") {
-      const { data: userData } = await supabase
-        .from("users")
-        .select("userid, username, url")
-        .eq("username", query)
-        .single();
-
-      if (userData) {
+      try {
+        const userData = await fetchUserByUsername(query);
         setUsername(userData.username);
-        setUserPfp(userData.url);
+        setUserPfp(userData.url || "");
+        setCars([]);
+      } catch (err: any) {
+        setUsername("");
+        setUserPfp("");
+        setCars([]);
+        setError(err?.message || "User not found");
       }
     } else {
-      let q = supabase.from("cars").select("carid, make, model, year, url, users:userid(username)");
+      if (!make && !model && !year) {
+        setError("Add at least one filter to search cars.");
+        return;
+      }
 
-      if (make) q = q.ilike("make", `%${make}%`);
-      if (model) q = q.ilike("model", `%${model}%`);
-      if (year) q = q.eq("year", year);
+      const parsedYear = year ? Number(year) : undefined;
+      if (year && Number.isNaN(parsedYear)) {
+        setError("Year must be a number");
+        return;
+      }
 
-      const { data } = await q;
-      setCars(data || []);
+      try {
+        const data = await searchCars({ make, model, year: parsedYear });
+        setCars(data || []);
+        setUsername("");
+        setUserPfp("");
+      } catch (err: any) {
+        setError(err?.message || "Failed to search cars");
+      }
     }
   };
 
@@ -87,6 +102,8 @@ export default function SearchModal({ onClose }: Props) {
           </button>
         </div>
 
+        {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
+
         {type === "users" && username && (
           <div onClick={() => window.location.href = `/profile/${username}`} className="flex items-center gap-4 p-4 rounded bg-zinc-800 cursor-pointer hover:bg-zinc-700">
             <img src={userpfp || "/images/default-pp.png"} className="w-10 h-10 rounded-full" />
@@ -100,7 +117,9 @@ export default function SearchModal({ onClose }: Props) {
               <div key={car.carid} onClick={() => window.location.href = `/car/${car.carid}`} className="flex items-center gap-3 p-3 bg-zinc-800 rounded cursor-pointer hover:bg-zinc-700">
                 <img src={car.url || "/images/default-pp.png"} className="w-16 h-10 object-cover rounded" />
                 <div>
-                  <p className="text-white">{car.make} {car.model} @{car.users.username}</p>
+                  <p className="text-white">
+                    {car.make} {car.model} @{(Array.isArray(car.users) ? car.users[0]?.username : car.users?.username) || ""}
+                  </p>
                   <p className="text-sm text-zinc-400">{car.year}</p>
                 </div>
               </div>

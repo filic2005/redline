@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../utils/supabaseClient";
+import { ensureUserProfile } from "../api/users";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -33,44 +34,22 @@ export default function Login() {
       return;
     }
 
-    // Try to get the user profile
-    const { data: userInfo, error: fetchError } = await supabase
-      .from("users")
-      .select("userid, username")
-      .eq("userid", user.id)
-      .single();
-
-    let finalUser = userInfo;
-
-    // If profile doesn't exist, create one
-    if (fetchError) {
-      const defaultUsername = user.user_metadata?.username || email.split("@")[0];
-      const { error: insertError } = await supabase.from("users").insert({
-        userid: user.id,
-        username: defaultUsername,
-        email,
-        bio: "",
-        url: "",
+    const profileUsername = user.user_metadata?.username || email.split("@")[0];
+    try {
+      const ensuredProfile = await ensureUserProfile({
+        username: profileUsername,
+        email: user.email || email,
       });
 
-      if (insertError) {
-        setError("Login succeeded, but profile creation failed.");
-        console.error("Insert error:", insertError);
-        setLoading(false);
-        return;
-      }
-
-      finalUser = { userid: user.id, username: defaultUsername };
+      localStorage.setItem("user", JSON.stringify(ensuredProfile));
+      navigate(`/profile/${ensuredProfile.username}`);
+    } catch (err: any) {
+      console.error("Failed to load profile from backend", err);
+      setError(err?.message || "Login succeeded, but failed to load your profile.");
+      setLoading(false);
+      return;
     }
 
-
-    // Store in localStorage and navigate
-    localStorage.setItem("user", JSON.stringify(finalUser));
-    if (finalUser) {
-      navigate(`/profile/${finalUser.username}`);
-    } else {
-      setError("Login succeeded, but user profile is missing.");
-    }
     setLoading(false);
   };
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../utils/supabaseClient";
+import { fetchFollowers, fetchFollowing } from "../api/follows";
 
 interface FollowListModalProps {
   type: "followers" | "following";
@@ -13,18 +13,11 @@ export default function FollowList({ type, userID, onClose }: FollowListModalPro
 
   useEffect(() => {
     const fetchFollows = async () => {
-      const followField = type === "followers" ? "followeeid" : "followerid";
-      const userJoin = type === "followers" ? "followerid" : "followeeid";
-
-      const { data, error } = await supabase
-        .from("follows")
-        .select(`${userJoin}, users: ${userJoin} (username, url)`)
-        .eq(followField, userID);
-
-      if (error) {
-        console.error("Error fetching follows:", error);
-      } else {
-        setUsers(data.map((item) => item.users));
+      try {
+        const data = type === "followers" ? await fetchFollowers(userID) : await fetchFollowing(userID);
+        setUsers(data);
+      } catch (err) {
+        console.error("Error fetching follows:", err);
       }
     };
 

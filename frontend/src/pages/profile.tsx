@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../utils/supabaseClient";
 import { useParams, Link } from "react-router-dom";
 import { Image, Warehouse} from "lucide-react";
 import EditProfile from "../components/editProfile";
 import FollowList from "../components/followList";
 import FollowButton from "../components/followButton";
 import PostModal from "../components/postModal";
+import { fetchUserByUsername } from "../api/users";
+import { fetchFollowers, fetchFollowing } from "../api/follows";
+import { fetchCarsByUser } from "../api/cars";
+import { fetchPostsByUser } from "../api/posts";
 
 export default function Profile() {
   const [username, setUsername] = useState("");
@@ -29,50 +32,30 @@ export default function Profile() {
 
   useEffect(() => {
     const fetchProfileData = async () => {
-      // Fetch the profile being viewed
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("userid, username, bio, url, filename")
-        .eq("username", routeUsername)
-        .single();
+      if (!routeUsername) return;
+      try {
+        const user = await fetchUserByUsername(routeUsername);
+        if (!user) return;
+        setUsername(user.username);
+        setFilename(user.filename || "");
+        setBio(user.bio || "");
+        setUrl(user.url || null);
+        setProfileUserID(user.userid);
 
-      if (userError || !userData) {
-        console.error("Error fetching user profile", userError);
-        return;
+        const [followersData, followingData, carsData, postsData] = await Promise.all([
+          fetchFollowers(user.userid),
+          fetchFollowing(user.userid),
+          fetchCarsByUser(user.userid),
+          fetchPostsByUser(user.userid),
+        ]);
+
+        setFollowers(followersData.length);
+        setFollowing(followingData.length);
+        setCars(carsData || []);
+        setPosts(postsData || []);
+      } catch (err) {
+        console.error("Error fetching user profile", err);
       }
-
-      setUsername(userData.username);
-      setFilename(userData.filename);
-      setBio(userData.bio);
-      setUrl(userData.url);
-      const userID = userData.userid;
-
-      // Fetch followers and following
-      const { count: followersCount } = await supabase
-        .from("follows")
-        .select("*", { count: "exact", head: true })
-        .eq("followeeid", userID);
-      setFollowers(followersCount || 0);
-
-      const { count: followingCount } = await supabase
-        .from("follows")
-        .select("*", { count: "exact", head: true })
-        .eq("followerid", userID);
-      setFollowing(followingCount || 0);
-
-      // Fetch cars
-      const { data: carsData } = await supabase
-        .from("cars")
-        .select("*")
-        .eq("userid", userID);
-      setCars(carsData || []);
-
-      // Fetch posts
-      const { data: postsData } = await supabase
-        .from("posts")
-        .select("postid, caption, images(url)")
-        .eq("userid", userID);
-      setPosts(postsData || []);
     };
 
     const storedUser = localStorage.getItem("user");
@@ -86,31 +69,26 @@ export default function Profile() {
     }
 
     fetchProfileData();
-  }, []);
+  }, [routeUsername]);
 
   useEffect(() => {
-  const fetchUserIDs = async () => {
-    // Get ID of current logged-in user
-    const { data: currentUserData } = await supabase
-      .from("users")
-      .select("userid")
-      .eq("username", currentUsername)
-      .single();
+    const fetchUserIDs = async () => {
+      if (!currentUsername || !routeUsername) return;
+      try {
+        const [currentUserData, profileUserData] = await Promise.all([
+          fetchUserByUsername(currentUsername),
+          fetchUserByUsername(routeUsername),
+        ]);
 
-    if (currentUserData) setCurrentUserID(currentUserData.userid);
+        if (currentUserData) setCurrentUserID(currentUserData.userid);
+        if (profileUserData) setProfileUserID(profileUserData.userid);
+      } catch (err) {
+        console.error('Failed to fetch user IDs', err);
+      }
+    };
 
-    // Get ID of profile user being viewed
-    const { data: profileUserData } = await supabase
-      .from("users")
-      .select("userid")
-      .eq("username", routeUsername)
-      .single();
-
-    if (profileUserData) setProfileUserID(profileUserData.userid);
-  };
-
-  if (currentUsername && routeUsername) fetchUserIDs();
-}, [currentUsername, routeUsername]);
+    fetchUserIDs();
+  }, [currentUsername, routeUsername]);
 
   return (
     <div className="text-white min-h-screen bg-black flex flex-col">
